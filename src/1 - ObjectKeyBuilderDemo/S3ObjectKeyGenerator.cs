@@ -44,7 +44,9 @@ namespace ObjectKeyBuilderDemo
             return IsPartValid(part) ? part : InvalidPart;
         }
 
-        private static string RemoveSpaces(string part) => part.IndexOf(' ') == -1 ? part : part.Replace(' ', '_');
+        private static string RemoveSpaces(string part) => part.IndexOf(' ') == -1 
+            ? part 
+            : part.Replace(' ', '_');
 
         private static bool IsPartValid(string input) => Regex.IsMatch(input, ValidKeyPartPattern);
     }

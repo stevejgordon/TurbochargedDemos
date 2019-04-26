@@ -10,7 +10,10 @@ namespace CloudfrontLogParserBenchmarks
 {
     class Program
     {
-        static void Main(string[] args) => _ = BenchmarkRunner.Run<CloudFrontParserBenchmarks>();
+        static void Main(string[] args)
+        {
+            _ = BenchmarkRunner.Run<CloudFrontParserBenchmarks>();
+        }
     }
 
     [MemoryDiagnoser]
@@ -22,7 +25,7 @@ namespace CloudfrontLogParserBenchmarks
             var directoryPath = Path.GetDirectoryName(Assembly.GetAssembly(typeof(CloudFrontRecord)).Location);
             var filePath = Path.Combine(directoryPath, "sample-cloudfront-access-logs.gz");
 
-            for (var i = 0; i < 5; i++)
+            for (var i = 0; i < 75; i++)
             {
                 _ = await CloudFrontParser.ParseAsync(filePath);
             }
@@ -34,9 +37,9 @@ namespace CloudfrontLogParserBenchmarks
             var directoryPath = Path.GetDirectoryName(Assembly.GetAssembly(typeof(CloudFrontRecord)).Location);
             var filePath = Path.Combine(directoryPath, "sample-cloudfront-access-logs.gz");          
 
-            for (var i = 0; i < 5; i++)
+            for (var i = 0; i < 75; i++)
             {
-                var newData = ArrayPool<CloudFrontRecord>.Shared.Rent(1000); // make the record a struct?
+                var newData = ArrayPool<CloudFrontRecordStruct>.Shared.Rent(10000);
 
                 try
                 {
@@ -44,7 +47,7 @@ namespace CloudfrontLogParserBenchmarks
                 }
                 finally
                 {
-                    ArrayPool<CloudFrontRecord>.Shared.Return(newData, clearArray: true);
+                    ArrayPool<CloudFrontRecordStruct>.Shared.Return(newData, clearArray: true);
                 }
             }
         }        

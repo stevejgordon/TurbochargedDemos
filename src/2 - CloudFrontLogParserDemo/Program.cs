@@ -2,8 +2,6 @@
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Buffers;
-//using JetBrains.Profiler.Windows.Api;
-using System;
 
 namespace CloudfrontLogParserDemo
 {
@@ -14,50 +12,33 @@ namespace CloudfrontLogParserDemo
             var directoryPath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             var filePath = Path.Combine(directoryPath, "sample-cloudfront-access-logs.gz");
 
-            //if (MemoryProfiler.IsActive && MemoryProfiler.CanControlAllocations)
-            //    MemoryProfiler.EnableAllocations();
 
             // ORIGINAL
 
-            //MemoryProfiler.Dump();
 
-            //for (int i = 0; i < 5; i++)
-            //{
-            //    await OldCloudFrontParser.ParseAsync(filePath);
-            //}
-
-            //MemoryProfiler.Dump();
+            for (int i = 0; i < 75; i++)
+            {
+                await CloudFrontParser.ParseAsync(filePath);
+            }
 
             // NEW
 
-            var pool = ArrayPool<CloudFrontRecord>.Shared;
+            var pool = ArrayPool<CloudFrontRecordStruct>.Shared;
 
-            var array = pool.Rent(1000);
-            pool.Return(array);
-
-            //MemoryProfiler.Dump();
-            
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 75; i++)
             {
-                var newData = ArrayPool<CloudFrontRecord>.Shared.Rent(1000);
+                var newData = pool.Rent(10000);
 
                 try
                 {
-                    //MemoryProfiler.Dump();
-
                     await CloudFrontParserNew.ParseAsync(filePath, newData);
-
-                    //MemoryProfiler.Dump();
                 }
                 finally
                 {
-                    ArrayPool<CloudFrontRecord>.Shared.Return(newData, clearArray: true);
+                   pool.Return(newData, clearArray: true);
                 }
             }
 
-            //MemoryProfiler.Dump();
-
-            //Console.ReadKey();
         }
     }
 }

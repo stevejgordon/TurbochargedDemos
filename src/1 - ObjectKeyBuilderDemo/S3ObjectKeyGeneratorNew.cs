@@ -19,7 +19,9 @@ namespace ObjectKeyBuilderDemo
         {
             var length = CalculateLength(eventContext);
 
-            var objectKeySpan = length <= MaxStackAllocationSize ? stackalloc char[length] : new char[length];
+            var objectKeySpan = length <= MaxStackAllocationSize 
+                ? stackalloc char[length] 
+                : new char[length];
 
             var currentPosition = 0;
 

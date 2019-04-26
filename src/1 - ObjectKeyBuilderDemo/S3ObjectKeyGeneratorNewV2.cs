@@ -55,7 +55,7 @@ namespace ObjectKeyBuilderDemo
             var isValid = true;
             var hasSpaces = false;
 
-            if (input != null && input.Length > 0 && !input.IsWhiteSpace())
+            if (input.Length > 0 && !input.IsWhiteSpace())
             {
                 foreach (var c in input)
                 {
@@ -76,7 +76,9 @@ namespace ObjectKeyBuilderDemo
                 isEmpty = true;
             }
 
-            return new PartMetaData(isEmpty, isValid, hasSpaces, isEmpty || !isValid ? InvalidPart.Length : input.Length);
+            return new PartMetaData(isEmpty, isValid, hasSpaces, isEmpty || !isValid 
+                ? InvalidPart.Length
+                : input.Length);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

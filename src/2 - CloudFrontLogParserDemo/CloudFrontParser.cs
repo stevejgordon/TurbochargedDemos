@@ -28,6 +28,7 @@ namespace CloudfrontLogParserDemo
                     {
                         var parser = new CloudWatchLogParser();
                         var results = parser.Parse(data);
+                        return results;
                     }
                 }                
             }
@@ -51,11 +52,13 @@ namespace CloudfrontLogParserDemo
             {
                 try
                 {
-                    return _csvParser
+                    var results = _csvParser
                         .ReadFromString(new CsvReaderOptions(new[] { "\n" }), contents)
                         .Where(x => x.IsValid)
                         .Select(x => x.Result)
                         .ToArray();
+
+                    return results;
                 }
                 catch (Exception)
                 {
