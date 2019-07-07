@@ -27,7 +27,6 @@ namespace ObjectKeyBuilderDemo
                 parts[5] = eventContext.EventDateUtc.Day.ToString("D2");
                 parts[6] = eventContext.EventDateUtc.Hour.ToString("D2");
                 parts[7] = eventContext.MessageId + ".json";
-
             }
             else
             {

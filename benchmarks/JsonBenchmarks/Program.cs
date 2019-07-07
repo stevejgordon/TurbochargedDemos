@@ -10,7 +10,7 @@ namespace BulkResponseParserBenchmarks
 {
     public class Program
     {
-        public static void Main(string[] args) => _ = BenchmarkRunner.Run<BulkResponseParserBenchmarks>();
+        public static void Main(string[] args) => _ = BenchmarkRunner.Run<BulkResponseParserBenchmarks>();        
     }
 
     [MemoryDiagnoser]
@@ -38,22 +38,21 @@ namespace BulkResponseParserBenchmarks
             yield return _errorStream;
             yield return _successStream;
         }
-               
-        [Benchmark(Baseline = true)]
-        //[ArgumentsSource(nameof(Streams))]
-        public void ParseErrorResponseOriginal()
-        {
-            _errorStream.Seek(0, SeekOrigin.Begin);
 
-            _ = BulkResponseParser.ParseResponse(_errorStream);
+        [Benchmark(Baseline = true)]
+        [ArgumentsSource(nameof(Streams))]
+        public void ParseResponseOriginal(Stream stream)
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            _ = BulkResponseParser.ParseResponse(stream);
         }
 
         [Benchmark]
-        public async Task ParseErrorResponseNew()
+        [ArgumentsSource(nameof(Streams))]
+        public async Task ParseResponseNew(Stream stream)
         {
-            _errorStream.Seek(0, SeekOrigin.Begin);
-
-            _ = await BulkResponseParserNew.FromStreamAsync(_errorStream);
+            stream.Seek(0, SeekOrigin.Begin);
+            _ = await BulkResponseParserNew.FromStreamAsync(stream);
         }
-    }   
+    }
 }

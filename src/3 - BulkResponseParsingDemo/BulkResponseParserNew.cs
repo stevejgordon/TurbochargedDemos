@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,11 +11,11 @@ namespace BulkResponseParsingDemo
 {
     public static class BulkResponseParserNew
     {
-        private static readonly byte[] errorsPropertyNameBytes = Encoding.UTF8.GetBytes("errors");
-        private static readonly byte[] idPropertyNameBytes = Encoding.UTF8.GetBytes("_id");
-        private static readonly byte[] statusPropertyNameBytes = Encoding.UTF8.GetBytes("status");
+        private static ReadOnlySpan<byte> ErrorsPropertyNameBytes => new[] { (byte)'e', (byte)'r', (byte)'r', (byte)'o', (byte)'r', (byte)'s' };
+        private static ReadOnlySpan<byte> IdPropertyNameBytes => new[] { (byte)'_', (byte)'i', (byte)'d' };
+        private static ReadOnlySpan<byte> StatusPropertyNameBytes => new[] { (byte)'s', (byte)'t', (byte)'a', (byte)'t', (byte)'u', (byte)'s' };
 
-        public static async Task<(bool success, IEnumerable<string> failedIds)> FromStreamAsync(Stream stream, CancellationToken cancellationToken = default)
+        public static async Task<(bool success, IEnumerable<string> failedIds)> FromStreamAsync(Stream stream, CancellationToken ct = default)
         {
             var buffer = ArrayPool<byte>.Shared.Rent(1024);
 
@@ -34,7 +33,7 @@ namespace BulkResponseParsingDemo
             {
                 while (true)
                 {
-                    int dataLength = await stream.ReadAsync(buffer.AsMemory(leftOver, buffer.Length - leftOver), cancellationToken);
+                    int dataLength = await stream.ReadAsync(buffer.AsMemory(leftOver, buffer.Length - leftOver), ct);
 
                     int dataSize = dataLength + leftOver;
                     bool isFinalBlock = dataSize == 0;
@@ -98,18 +97,18 @@ namespace BulkResponseParsingDemo
                         break;
 
                     case JsonTokenType.PropertyName:
-                        if (json.ValueSpan.SequenceEqual(errorsPropertyNameBytes))
+                        if (json.ValueSpan.SequenceEqual(ErrorsPropertyNameBytes))
                         {
                             foundErrorsProperty = true;
                         }
 
                         if (startObjectCount == 2)
                         {
-                            if (json.ValueSpan.SequenceEqual(idPropertyNameBytes))
+                            if (json.ValueSpan.SequenceEqual(IdPropertyNameBytes))
                             {
                                 idPropertyFound = true;
                             }
-                            if (json.ValueSpan.SequenceEqual(statusPropertyNameBytes))
+                            if (json.ValueSpan.SequenceEqual(StatusPropertyNameBytes))
                             {
                                 statusPropertyFound = true;
                             }

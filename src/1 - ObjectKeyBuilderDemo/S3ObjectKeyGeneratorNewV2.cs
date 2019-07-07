@@ -8,11 +8,10 @@ namespace ObjectKeyBuilderDemo
     public static class S3ObjectKeyGeneratorNewV2
     {
         private const char JoinChar = '/';
-
-        private static readonly char[] InvalidPart = { 'i', 'n', 'v', 'a', 'l', 'i', 'd' };
-        private static readonly char[] UnknownPart = { 'u', 'n', 'k', 'n', 'o', 'w', 'n' };
-        private static readonly char[] DateFormat = { 'y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/' };
-        private static readonly char[] JsonSuffix = { '.', 'j', 's', 'o', 'n' };
+        private static ReadOnlySpan<char> InvalidPart => new [] { 'i', 'n', 'v', 'a', 'l', 'i', 'd' };
+        private static ReadOnlySpan<char> UnknownPart => new[] { 'u', 'n', 'k', 'n', 'o', 'w', 'n' };
+        private static ReadOnlySpan<char> DateFormat => new[] { 'y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/' };
+        private static ReadOnlySpan<char> JsonSuffix => new[] { '.', 'j', 's', 'o', 'n' };
 
         public static string GenerateSafeObjectKey(EventContext eventContext)
         {

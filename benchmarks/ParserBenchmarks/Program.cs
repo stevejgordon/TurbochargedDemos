@@ -10,40 +10,38 @@ namespace CloudfrontLogParserBenchmarks
 {
     class Program
     {
-        static void Main(string[] args)
-        {
-            _ = BenchmarkRunner.Run<CloudFrontParserBenchmarks>();
-        }
+        static void Main(string[] args) => _ = BenchmarkRunner.Run<CloudFrontParserBenchmarks>();
     }
 
     [MemoryDiagnoser]
     public class CloudFrontParserBenchmarks
     {
-        [Benchmark(Baseline = true)]
-        public async Task Original()
+        private string _filePath;
+
+        [GlobalSetup]
+        public void Setup()
         {
             var directoryPath = Path.GetDirectoryName(Assembly.GetAssembly(typeof(CloudFrontRecord)).Location);
-            var filePath = Path.Combine(directoryPath, "sample-cloudfront-access-logs.gz");
+            _filePath = Path.Combine(directoryPath, "sample-cloudfront-access-logs.gz");
+        }
 
+        [Benchmark(Baseline = true)]
+        public async Task Original()
+        {           
             for (var i = 0; i < 75; i++)
-            {
-                _ = await CloudFrontParser.ParseAsync(filePath);
-            }
+                _ = await CloudFrontParser.ParseAsync(_filePath);
         }
 
         [Benchmark]
         public async Task Optimised()
         {
-            var directoryPath = Path.GetDirectoryName(Assembly.GetAssembly(typeof(CloudFrontRecord)).Location);
-            var filePath = Path.Combine(directoryPath, "sample-cloudfront-access-logs.gz");          
-
             for (var i = 0; i < 75; i++)
             {
                 var newData = ArrayPool<CloudFrontRecordStruct>.Shared.Rent(10000);
 
                 try
                 {
-                    await CloudFrontParserNew.ParseAsync(filePath, newData);
+                    await CloudFrontParserNew.ParseAsync(_filePath, newData);
                 }
                 finally
                 {
