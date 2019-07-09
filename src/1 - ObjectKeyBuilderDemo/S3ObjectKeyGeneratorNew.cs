@@ -85,7 +85,7 @@ namespace ObjectKeyBuilderDemo
         {
             if (input != null)
             {
-                var productLength = input.Length;
+                var productLength = input?.Length ?? 0;
 
                 if (productLength == 0 || MemoryExtensions.IsWhiteSpace(input))
                 {
