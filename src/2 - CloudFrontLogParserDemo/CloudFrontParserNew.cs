@@ -1,8 +1,8 @@
-﻿using Pipelines.Sockets.Unofficial;
-using System;
+﻿using System;
 using System.Buffers;
 using System.IO;
 using System.IO.Compression;
+using System.IO.Pipelines;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,114 +10,58 @@ namespace CloudfrontLogParserDemo
 {
     public static class CloudFrontParserNew
     {
-        public static async Task ParseAsync(string filePath, CloudFrontRecordStruct[] items)
+        public static async Task<int> ParseAsync(string filePath, CloudFrontRecordStruct[] items)
         {
+            var position = 0;
+
             if (File.Exists(filePath))
             {
                 await using var fileStream = File.OpenRead(filePath);
                 await using var decompressionStream = new GZipStream(fileStream, CompressionMode.Decompress);
 
-                var pipeReader = StreamConnection.GetReader(decompressionStream);
-
-                var position = 0;
-
+                var pipeReader = PipeReader.Create(decompressionStream);
+                   
                 while (true)
                 {
                     var result = await pipeReader.ReadAsync();
-
+                                       
                     var buffer = result.Buffer;
 
-                    ParseLines(items, ref buffer, ref position);
+                    var sequencePosition = ParseLines(items, ref buffer, ref position);
+                    
+                    pipeReader.AdvanceTo(sequencePosition, buffer.End);
 
-                    // Tell the PipeReader how much of the buffer we have consumed
-                    pipeReader.AdvanceTo(buffer.Start, buffer.End);
-
-                    // Stop reading if there's no more data coming
                     if (result.IsCompleted)
                     {
                         break;
                     }
                 }
 
-                // Mark the PipeReader as complete
                 pipeReader.Complete();
             }
+
+            return position;
         }
 
-        private static void ParseLines(CloudFrontRecordStruct[] itemsArray, ref ReadOnlySequence<byte> buffer, ref int position)
+        private static SequencePosition ParseLines(CloudFrontRecordStruct[] itemsArray, ref ReadOnlySequence<byte> buffer, ref int position)
         {
-            const byte newLine = (byte)'\n';
+            var newLine = Encoding.UTF8.GetBytes(Environment.NewLine).AsSpan();
 
             var reader = new SequenceReader<byte>(buffer);
 
             while (!reader.End)
             {
-                var span = reader.UnreadSpan;
-                var index = span.IndexOf(newLine);
-                int length;
-
-                if (index != -1)
+                if (reader.TryReadToAny(out ReadOnlySpan<byte> line, newLine, true))
                 {
-                    length = index;
-
-                    var parsedLine = LineParser.ParseLine(span.Slice(0, index));
-
-                    if (parsedLine.HasValue) itemsArray[position++] = parsedLine.Value;
-                }
-                else
-                {
-                    // We didn't find the new line in the current segment, see if it's 
-                    // another segment
-                    var current = reader.Position;
-                    var linePos = buffer.Slice(current).PositionOf(newLine);
-
-                    if (linePos == null)
-                    {
-                        // Nope
-                        break;
-                    }
-
-                    // We found one, so get the line and parse it
-                    var line = buffer.Slice(current, linePos.Value);
-
-                    var parsedLine = ParseLine(line);
-
-                    if (parsedLine.HasValue) itemsArray[position++] = parsedLine.Value;
-
-                    length = (int)line.Length;
+                    break;
                 }
 
-                // Advance past the line + the \n
-                reader.Advance(length + 1);
+                var parsedLine = LineParser.ParseLine(line);
+
+                if (parsedLine.HasValue) itemsArray[position++] = parsedLine.Value;
             }
 
-            // Update the buffer
-            buffer = buffer.Slice(reader.Position);
-        }
-
-        private static CloudFrontRecordStruct? ParseLine(in ReadOnlySequence<byte> line)
-        {
-            // Lines are always small so we incur a small copy if we happen to cross a buffer boundary
-            if (line.IsSingleSegment)
-            {
-                return LineParser.ParseLine(line.First.Span);
-            }
-
-            if (line.Length < 256)
-            {
-                // Small lines we copy to the stack
-                Span<byte> stackLine = stackalloc byte[(int)line.Length];
-                line.CopyTo(stackLine);
-                return LineParser.ParseLine(stackLine);
-            }
-
-            // Should be extremely rare
-            var length = (int)line.Length;
-            var buffer = ArrayPool<byte>.Shared.Rent(length);
-            line.CopyTo(buffer);
-            var emailBeaconCloudWatchLogRecord = LineParser.ParseLine(buffer.AsSpan(0, length));
-            ArrayPool<byte>.Shared.Return(buffer);
-            return emailBeaconCloudWatchLogRecord;
+            return reader.Position;
         }
 
         private static class LineParser
@@ -166,6 +110,5 @@ namespace CloudfrontLogParserDemo
                 return record;
             }
         }
-
     }
 }

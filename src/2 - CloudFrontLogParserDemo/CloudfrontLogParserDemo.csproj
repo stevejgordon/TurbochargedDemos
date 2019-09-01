@@ -6,8 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pipelines.Sockets.Unofficial" Version="2.0.11" />
-    <PackageReference Include="System.IO.Pipelines" Version="4.5.3" />
+    <PackageReference Include="System.IO.Pipelines" Version="4.6.0-preview8.19405.3" />
     <PackageReference Include="TinyCsvParser" Version="2.2.1" />
   </ItemGroup>
 
@@ -19,6 +18,9 @@
 
   <ItemGroup>
     <None Update="sample-cloudfront-access-logs.gz">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="temp.gz">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

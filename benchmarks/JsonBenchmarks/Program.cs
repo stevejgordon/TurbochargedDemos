@@ -10,7 +10,15 @@ namespace BulkResponseParserBenchmarks
 {
     public class Program
     {
-        public static void Main(string[] args) => _ = BenchmarkRunner.Run<BulkResponseParserBenchmarks>();        
+        public static void Main(string[] args) => _ = BenchmarkRunner.Run<BulkResponseParserBenchmarks>();   
+        
+        //public static async Task Main()
+        //{
+        //    using (FileStream fs = File.OpenRead(AppDomain.CurrentDomain.BaseDirectory + "/SuccessResponseSample.txt"))
+        //    {
+        //        var result = await BulkResponseParserNew.FromStreamAsync(fs);
+        //    }
+        //}
     }
 
     [MemoryDiagnoser]

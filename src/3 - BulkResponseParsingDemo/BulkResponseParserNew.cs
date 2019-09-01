@@ -38,7 +38,7 @@ namespace BulkResponseParsingDemo
                     int dataSize = dataLength + leftOver;
                     bool isFinalBlock = dataSize == 0;
 
-                    state = ParseErrors(buffer.AsSpan(0, dataSize), isFinalBlock, state, ref foundErrorsProperty, ref hasErrors,
+                    var consumed = ParseErrors(buffer.AsSpan(0, dataSize), isFinalBlock, ref state, ref foundErrorsProperty, ref hasErrors,
                         ref insideMainObject, ref insideItemsArray, ref errors);
 
                     if (foundErrorsProperty && !hasErrors)
@@ -46,7 +46,7 @@ namespace BulkResponseParsingDemo
                         break; // there are no errors so we can short-circuit here.
                     }
 
-                    leftOver = dataSize - (int)state.BytesConsumed;
+                    leftOver = dataSize - (int)consumed;
 
                     if (leftOver != 0)
                     {
@@ -67,7 +67,7 @@ namespace BulkResponseParsingDemo
             return (!hasErrors, errors);
         }
 
-        public static JsonReaderState ParseErrors(ReadOnlySpan<byte> dataUtf8, bool isFinalBlock, JsonReaderState state,
+        public static long ParseErrors(ReadOnlySpan<byte> dataUtf8, bool isFinalBlock, ref JsonReaderState state,
             ref bool foundErrorsProperty, ref bool hasErrors, ref bool insideMainObject, ref bool insideItemsArray, ref List<string> errors)
         {
             var json = new Utf8JsonReader(dataUtf8, isFinalBlock, state);
@@ -156,7 +156,9 @@ namespace BulkResponseParsingDemo
                 }
             }
 
-            return json.CurrentState;
+            state = json.CurrentState;
+
+            return json.BytesConsumed;
         }
     }
 }

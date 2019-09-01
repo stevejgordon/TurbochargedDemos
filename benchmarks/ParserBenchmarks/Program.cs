@@ -10,7 +10,24 @@ namespace CloudfrontLogParserBenchmarks
 {
     class Program
     {
-        static void Main(string[] args) => _ = BenchmarkRunner.Run<CloudFrontParserBenchmarks>();
+        //static void Main(string[] args) => _ = BenchmarkRunner.Run<CloudFrontParserBenchmarks>();
+
+        static async Task Main()
+        {
+            var directoryPath = Path.GetDirectoryName(Assembly.GetAssembly(typeof(CloudFrontRecord)).Location);
+            var filePath = Path.Combine(directoryPath, "sample-cloudfront-access-logs.gz");
+
+            var newData = ArrayPool<CloudFrontRecordStruct>.Shared.Rent(10000);
+
+            try
+            {
+                var items = await CloudFrontParserNew.ParseAsync(filePath, newData);
+            }
+            finally
+            {
+                ArrayPool<CloudFrontRecordStruct>.Shared.Return(newData);
+            }
+        }
     }
 
     [MemoryDiagnoser]
@@ -41,11 +58,11 @@ namespace CloudfrontLogParserBenchmarks
 
                 try
                 {
-                    await CloudFrontParserNew.ParseAsync(_filePath, newData);
+                    var items = await CloudFrontParserNew.ParseAsync(_filePath, newData);
                 }
                 finally
                 {
-                    ArrayPool<CloudFrontRecordStruct>.Shared.Return(newData, clearArray: true);
+                    ArrayPool<CloudFrontRecordStruct>.Shared.Return(newData);
                 }
             }
         }        
