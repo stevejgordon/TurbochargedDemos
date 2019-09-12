@@ -20,7 +20,8 @@ namespace ObjectKeyBuilderDemo
 
             var objectKeySpan = length <= MaxStackAllocationSize 
                 ? stackalloc char[length] 
-                : new char[length];
+                : new char[length]; // this allocations. If we actually expected this to
+                // ever be the case using the ArrayPool would be more efficient.
 
             var currentPosition = 0;
 
