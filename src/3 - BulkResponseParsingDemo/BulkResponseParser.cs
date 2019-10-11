@@ -12,9 +12,9 @@ namespace BulkResponseParsingDemo
     {
         public static (bool Success, IReadOnlyCollection<string> Errors) ParseResponse(Stream stream, CancellationToken cancellationToken = default)
         {
-            var streamReader = new StreamReader(stream);
+            using var streamReader = new StreamReader(stream);
 
-            var reader = new JsonTextReader(streamReader);
+            using var reader = new JsonTextReader(streamReader);
 
             JsonSerializer serializer = new JsonSerializer();
 
