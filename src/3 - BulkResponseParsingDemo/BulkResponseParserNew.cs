@@ -13,9 +13,12 @@ namespace BulkResponseParsingDemo
     {
         // demoware - this prototype example doesn't cover all edge cases!
 
-        private static ReadOnlySpan<byte> ErrorsPropertyNameBytes => new[] { (byte)'e', (byte)'r', (byte)'r', (byte)'o', (byte)'r', (byte)'s' };
-        private static ReadOnlySpan<byte> IdPropertyNameBytes => new[] { (byte)'_', (byte)'i', (byte)'d' };
-        private static ReadOnlySpan<byte> StatusPropertyNameBytes => new[] { (byte)'s', (byte)'t', (byte)'a', (byte)'t', (byte)'u', (byte)'s' };
+        private static ReadOnlySpan<byte> ErrorsPropertyNameBytes =>
+            new[] { (byte)'e', (byte)'r', (byte)'r', (byte)'o', (byte)'r', (byte)'s' };
+        private static ReadOnlySpan<byte> IdPropertyNameBytes =>
+            new[] { (byte)'_', (byte)'i', (byte)'d' };
+        private static ReadOnlySpan<byte> StatusPropertyNameBytes =>
+            new[] { (byte)'s', (byte)'t', (byte)'a', (byte)'t', (byte)'u', (byte)'s' };
 
         public static async Task<(bool success, IEnumerable<string> failedIds)> FromStreamAsync(Stream stream, CancellationToken ct = default)
         {
@@ -36,12 +39,14 @@ namespace BulkResponseParsingDemo
                 while (true)
                 {
                     // could use pipelines here too
-                    int dataLength = await stream.ReadAsync(buffer.AsMemory(leftOver, buffer.Length - leftOver), ct);
+                    int dataLength = await stream.ReadAsync(buffer.AsMemory(leftOver,
+                        buffer.Length - leftOver), ct);
 
                     int dataSize = dataLength + leftOver;
                     bool isFinalBlock = dataSize == 0;
 
-                    var consumed = ParseErrors(buffer.AsSpan(0, dataSize), isFinalBlock, ref state, ref foundErrorsProperty, ref hasErrors,
+                    var consumed = ParseErrors(buffer.AsSpan(0, dataSize), isFinalBlock,
+                        ref state, ref foundErrorsProperty, ref hasErrors,
                         ref insideMainObject, ref insideItemsArray, ref errors);
 
                     if (foundErrorsProperty && !hasErrors)
@@ -105,16 +110,14 @@ namespace BulkResponseParsingDemo
                             foundErrorsProperty = true;
                         }
 
-                        if (startObjectCount == 2)
+                        if (startObjectCount == 2 && json.ValueSpan.SequenceEqual(IdPropertyNameBytes))
                         {
-                            if (json.ValueSpan.SequenceEqual(IdPropertyNameBytes))
-                            {
-                                idPropertyFound = true;
-                            }
-                            if (json.ValueSpan.SequenceEqual(StatusPropertyNameBytes))
-                            {
-                                statusPropertyFound = true;
-                            }
+                            idPropertyFound = true;
+                        }
+
+                        if (startObjectCount == 2 && json.ValueSpan.SequenceEqual(StatusPropertyNameBytes))
+                        {
+                            statusPropertyFound = true;
                         }
 
                         break;
@@ -139,7 +142,6 @@ namespace BulkResponseParsingDemo
                         {
                             currentEventId = json.GetString();
                         }
-
                         break;
 
                     case JsonTokenType.Number:
@@ -157,6 +159,8 @@ namespace BulkResponseParsingDemo
                         }
                         break;
                 }
+
+                if (foundErrorsProperty && !hasErrors) break;
             }
 
             state = json.CurrentState;

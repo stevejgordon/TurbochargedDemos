@@ -22,6 +22,7 @@ namespace CloudfrontLogParserDemo
                 {
                     await decompressionStream.CopyToAsync(decompressedStream);
 
+                    // allocations everywhere!!
                     var data = Encoding.UTF8.GetString(decompressedStream.ToArray());
 
                     if (!string.IsNullOrEmpty(data))
@@ -42,7 +43,10 @@ namespace CloudfrontLogParserDemo
 
             public CloudWatchLogParser()
             {
-                var csvParserOptions = new CsvParserOptions(true, "#", new TinyCsvParser.Tokenizer.RFC4180.RFC4180Tokenizer(new TinyCsvParser.Tokenizer.RFC4180.Options('"', '\\', '\t')));
+                var csvParserOptions = new CsvParserOptions(true, "#", 
+                    new TinyCsvParser.Tokenizer.RFC4180.RFC4180Tokenizer(
+                        new TinyCsvParser.Tokenizer.RFC4180.Options('"', '\\', '\t')));
+
                 var csvMapper = new EmailBeaconLogRecordMapping();
 
                 _csvParser = new CsvParser<CloudFrontRecord>(csvParserOptions, csvMapper);

@@ -12,9 +12,9 @@ namespace ObjectKeyBuilderDemo
 
         public static string GenerateSafeObjectKey(EventContext eventContext)
         {
-            var length = eventContext.EventDateUtc == default ? 4 : 8;
+            var elements = eventContext.EventDateUtc == default ? 4 : 5;
 
-            var parts = new string[length];
+            var parts = new string[elements];
 
             parts[0] = GetPart(eventContext.Product);
             parts[1] = GetPart(eventContext.SiteKey);
@@ -22,11 +22,8 @@ namespace ObjectKeyBuilderDemo
 
             if (eventContext.EventDateUtc != default)
             {
-                parts[3] = eventContext.EventDateUtc.Year.ToString();
-                parts[4] = eventContext.EventDateUtc.Month.ToString("D2");
-                parts[5] = eventContext.EventDateUtc.Day.ToString("D2");
-                parts[6] = eventContext.EventDateUtc.Hour.ToString("D2");
-                parts[7] = eventContext.MessageId + ".json";
+                parts[3] = eventContext.EventDateUtc.ToString("yyyy/MM/dd/HH");                
+                parts[4] = eventContext.MessageId + ".json";
             }
             else
             {
@@ -47,6 +44,7 @@ namespace ObjectKeyBuilderDemo
             ? part 
             : part.Replace(' ', '_');
 
-        private static bool IsPartValid(string input) => Regex.IsMatch(input, ValidKeyPartPattern);
+        private static bool IsPartValid(string input) => 
+            Regex.IsMatch(input, ValidKeyPartPattern);
     }
 }

@@ -9,19 +9,24 @@ namespace ObjectKeyBuilderDemo
         private const int MaxStackAllocationSize = 256;
         private const char JoinChar = '/';
 
-        private static ReadOnlySpan<char> InvalidPart => new[] { 'i', 'n', 'v', 'a', 'l', 'i', 'd' };
-        private static ReadOnlySpan<char> UnknownPart => new[] { 'u', 'n', 'k', 'n', 'o', 'w', 'n' };
-        private static ReadOnlySpan<char> DateFormat => new[] { 'y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/' };
-        private static ReadOnlySpan<char> JsonSuffix => new[] { '.', 'j', 's', 'o', 'n' };
+        // ugly but compiler can optmise away a memcopy
+        private static ReadOnlySpan<char> InvalidPart =>
+            new[] { 'i', 'n', 'v', 'a', 'l', 'i', 'd' };
+        private static ReadOnlySpan<char> UnknownPart =>
+            new[] { 'u', 'n', 'k', 'n', 'o', 'w', 'n' };
+        private static ReadOnlySpan<char> DateFormat =>
+            new[] { 'y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/' };
+        private static ReadOnlySpan<char> JsonSuffix =>
+            new[] { '.', 'j', 's', 'o', 'n' };
 
         public static string GenerateSafeObjectKey(EventContext eventContext)
         {
             var length = CalculateLength(eventContext);
 
-            var objectKeySpan = length <= MaxStackAllocationSize 
-                ? stackalloc char[length] 
+            var objectKeySpan = length <= MaxStackAllocationSize
+                ? stackalloc char[length]
                 : new char[length]; // this allocations. If we actually expected this to
-                // ever be the case using the ArrayPool would be more efficient.
+                                    // ever be the case using the ArrayPool would be more efficient.
 
             var currentPosition = 0;
 
@@ -33,16 +38,20 @@ namespace ObjectKeyBuilderDemo
 
             if (eventContext.EventDateUtc != default)
             {
-                eventContext.EventDateUtc.TryFormat(objectKeySpan.Slice(currentPosition), out var bytesWritten, DateFormat, CultureInfo.InvariantCulture);
+                eventContext.EventDateUtc.TryFormat(objectKeySpan.Slice(currentPosition),
+                    out var bytesWritten, DateFormat, CultureInfo.InvariantCulture);
+
                 currentPosition += bytesWritten;
             }
-            
-            MemoryExtensions.ToLowerInvariant(eventContext.MessageId, objectKeySpan.Slice(currentPosition));
+
+            MemoryExtensions.ToLowerInvariant(eventContext.MessageId,
+                objectKeySpan.Slice(currentPosition)); 
+
             currentPosition += eventContext.MessageId.Length;
 
-            JsonSuffix.CopyTo(objectKeySpan.Slice(currentPosition));
+            JsonSuffix.CopyTo(objectKeySpan.Slice(currentPosition)); // copy suffix
 
-            var key = objectKeySpan.ToString();
+            var key = objectKeySpan.ToString(); // allocate the final string
 
             return key;
         }
@@ -52,9 +61,15 @@ namespace ObjectKeyBuilderDemo
         {
             var length = 0;
 
-            length += string.IsNullOrEmpty(eventContext.Product) ? UnknownPart.Length + 1 : CalculatePartLength(eventContext.Product);
-            length += string.IsNullOrEmpty(eventContext.SiteKey) ? UnknownPart.Length + 1 : CalculatePartLength(eventContext.SiteKey);
-            length += string.IsNullOrEmpty(eventContext.EventName) ? UnknownPart.Length + 1 : CalculatePartLength(eventContext.EventName);
+            length += string.IsNullOrEmpty(eventContext.Product)
+                ? UnknownPart.Length + 1
+                : CalculatePartLength(eventContext.Product);
+            length += string.IsNullOrEmpty(eventContext.SiteKey)
+                ? UnknownPart.Length + 1
+                : CalculatePartLength(eventContext.SiteKey);
+            length += string.IsNullOrEmpty(eventContext.EventName)
+                ? UnknownPart.Length + 1
+                : CalculatePartLength(eventContext.EventName);
 
             if (eventContext.EventDateUtc != default)
                 length += DateFormat.Length;
@@ -84,43 +99,38 @@ namespace ObjectKeyBuilderDemo
 
         private static void BuildPart(string input, Span<char> output, ref int currentPosition)
         {
-            if (input != null)
-            {
-                var productLength = input?.Length ?? 0;
+            var productLength = input?.Length ?? 0;
 
-                if (productLength == 0 || MemoryExtensions.IsWhiteSpace(input))
-                {
-                    UnknownPart.CopyTo(output.Slice(currentPosition));
-                    currentPosition += UnknownPart.Length;
-                }
-                else
-                {
-                    var isValid = true;
-                    foreach (var c in input)
-                    {
-                        if (!char.IsLetterOrDigit(c) && c != ' ')
-                        {
-                            isValid = false;
-                            break;
-                        }
-                    }
-
-                    if (!isValid)
-                    {
-                        InvalidPart.CopyTo(output.Slice(currentPosition));
-                        currentPosition += InvalidPart.Length;
-                    }
-                    else
-                    {
-                        MemoryExtensions.ToLowerInvariant(input, output.Slice(currentPosition));
-                        currentPosition += productLength;
-                    }
-                }
-            }
-            else
+            // check if empty string, if so, unknown
+            if (productLength == 0 || MemoryExtensions.IsWhiteSpace(input))
             {
                 UnknownPart.CopyTo(output.Slice(currentPosition));
                 currentPosition += UnknownPart.Length;
+            }
+            else
+            {
+                // check valid
+                var isValid = true;
+                foreach (var c in input)
+                {
+                    if (!char.IsLetterOrDigit(c) && c != ' ')
+                    {
+                        isValid = false;
+                        break;
+                    }
+                }
+
+                if (!isValid) // not valid
+                {
+                    InvalidPart.CopyTo(output.Slice(currentPosition));
+                    currentPosition += InvalidPart.Length;
+                }
+                else
+                {
+                    // if valid, lowercase
+                    MemoryExtensions.ToLowerInvariant(input, output.Slice(currentPosition));
+                    currentPosition += productLength;
+                }
             }
 
             output[currentPosition++] = JoinChar;
@@ -131,16 +141,16 @@ namespace ObjectKeyBuilderDemo
         {
             var remaining = objectKey.Slice(0, currentPosition);
 
-            var indexOfSpace = remaining.IndexOf(' ');
+            var indexOfSpace = remaining.IndexOf(' '); // do we have spaces
 
             if (indexOfSpace < 0)
                 return;
 
-            while (indexOfSpace != -1)
+            while (indexOfSpace != -1) // while there are space
             {
-                remaining[indexOfSpace] = '_';
-                remaining = remaining.Slice(indexOfSpace + 1);
-                indexOfSpace = remaining.IndexOf(' ');
+                remaining[indexOfSpace] = '_'; // replace at the index of the space
+                remaining = remaining.Slice(indexOfSpace + 1); // slice past the replaced char
+                indexOfSpace = remaining.IndexOf(' '); // do we have spaces
             }
         }
     }

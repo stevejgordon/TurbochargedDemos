@@ -20,15 +20,15 @@ namespace CloudfrontLogParserDemo
                 await using var decompressionStream = new GZipStream(fileStream, CompressionMode.Decompress);
 
                 var pipeReader = PipeReader.Create(decompressionStream);
-                   
+
                 while (true)
                 {
                     var result = await pipeReader.ReadAsync();
-                                       
+
                     var buffer = result.Buffer;
 
                     var sequencePosition = ParseLines(items, ref buffer, ref position);
-                    
+
                     pipeReader.AdvanceTo(sequencePosition, buffer.End);
 
                     if (result.IsCompleted)
@@ -51,14 +51,15 @@ namespace CloudfrontLogParserDemo
 
             while (!reader.End)
             {
-                if (reader.TryReadToAny(out ReadOnlySpan<byte> line, newLine, true))
+                if (!reader.TryReadToAny(out ReadOnlySpan<byte> line, newLine, true))
                 {
-                    break;
+                    break; // we don't have a delimiter (newline) in the current data
                 }
 
-                var parsedLine = LineParser.ParseLine(line);
+                var parsedLine = LineParser.ParseLine(line); // we have a line to parse
 
-                if (parsedLine.HasValue) itemsArray[position++] = parsedLine.Value;
+                if (parsedLine.HasValue) 
+                    itemsArray[position++] = parsedLine.Value;
             }
 
             return reader.Position;
@@ -76,33 +77,27 @@ namespace CloudfrontLogParserDemo
 
                 var record = new CloudFrontRecordStruct();
 
-                while (tabCount < 12)
+                while (tabCount <= 11) // only need to parse first 11 tabs
                 {
                     var tabAt = line.IndexOf(Tab);
 
                     if (tabCount == 1)
                     {
-                        {
-                            var value = Encoding.UTF8.GetString(line.Slice(0, tabAt));
-                            record.Date = value;
-                        }
+                        var value = Encoding.UTF8.GetString(line.Slice(0, tabAt));
+                        record.Date = value;
                     }
                     else if (tabCount == 2)
                     {
-                        {
-                            var value = Encoding.UTF8.GetString(line.Slice(0, tabAt));
-                            record.Time = value;
-                        }
+                        var value = Encoding.UTF8.GetString(line.Slice(0, tabAt));
+                        record.Time = value;
                     }
                     else if (tabCount == 11)
                     {
-                        {
-                            var value = Encoding.UTF8.GetString(line.Slice(0, tabAt));
-                            record.UserAgent = value;
-                        }
+                        var value = Encoding.UTF8.GetString(line.Slice(0, tabAt));
+                        record.UserAgent = value;
                     }
 
-                    line = line.Slice(tabAt + 1);
+                    line = line.Slice(tabAt + 1); // slice past tab
 
                     tabCount++;
                 }
