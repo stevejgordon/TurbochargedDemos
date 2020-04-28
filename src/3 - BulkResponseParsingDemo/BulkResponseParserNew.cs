@@ -9,10 +9,9 @@ using System.Threading.Tasks;
 
 namespace BulkResponseParsingDemo
 {
+    // demoware - this prototype example doesn't cover all edge cases!
     public static class BulkResponseParserNew
     {
-        // demoware - this prototype example doesn't cover all edge cases!
-
         private static ReadOnlySpan<byte> ErrorsPropertyNameBytes =>
             new[] { (byte)'e', (byte)'r', (byte)'r', (byte)'o', (byte)'r', (byte)'s' };
         private static ReadOnlySpan<byte> IdPropertyNameBytes =>
@@ -20,7 +19,8 @@ namespace BulkResponseParsingDemo
         private static ReadOnlySpan<byte> StatusPropertyNameBytes =>
             new[] { (byte)'s', (byte)'t', (byte)'a', (byte)'t', (byte)'u', (byte)'s' };
 
-        public static async Task<(bool success, IEnumerable<string> failedIds)> FromStreamAsync(Stream stream, CancellationToken ct = default)
+        public static async Task<(bool success, IEnumerable<string> failedIds)> FromStreamAsync(Stream stream, 
+            CancellationToken ct = default)
         {
             var buffer = ArrayPool<byte>.Shared.Rent(1024); // hardcoded as I know the length in this sample
 
@@ -76,7 +76,8 @@ namespace BulkResponseParsingDemo
         }
 
         public static long ParseErrors(ReadOnlySpan<byte> dataUtf8, bool isFinalBlock, ref JsonReaderState state,
-            ref bool foundErrorsProperty, ref bool hasErrors, ref bool insideMainObject, ref bool insideItemsArray, ref List<string> errors)
+            ref bool foundErrorsProperty, ref bool hasErrors, ref bool insideMainObject, 
+            ref bool insideItemsArray, ref List<string> errors)
         {
             var json = new Utf8JsonReader(dataUtf8, isFinalBlock, state);
 

@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace ObjectKeyBuilderDemo
 {
+    // demoware - this prototype example doesn't cover all edge cases!
     public class S3ObjectKeyGeneratorNew
     {
         private const int MaxStackAllocationSize = 256;
@@ -23,7 +24,7 @@ namespace ObjectKeyBuilderDemo
         {
             var length = CalculateLength(eventContext);
 
-            var objectKeySpan = length <= MaxStackAllocationSize
+            Span<char> objectKeySpan = length <= MaxStackAllocationSize
                 ? stackalloc char[length]
                 : new char[length]; // this allocations. If we actually expected this to
                                     // ever be the case using the ArrayPool would be more efficient.
@@ -39,9 +40,9 @@ namespace ObjectKeyBuilderDemo
             if (eventContext.EventDateUtc != default)
             {
                 eventContext.EventDateUtc.TryFormat(objectKeySpan.Slice(currentPosition),
-                    out var bytesWritten, DateFormat, CultureInfo.InvariantCulture);
+                    out var charsWritten, DateFormat, CultureInfo.InvariantCulture);
 
-                currentPosition += bytesWritten;
+                currentPosition += charsWritten;
             }
 
             MemoryExtensions.ToLowerInvariant(eventContext.MessageId,

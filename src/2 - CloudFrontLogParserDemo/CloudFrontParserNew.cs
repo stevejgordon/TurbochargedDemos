@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace CloudfrontLogParserDemo
 {
+    // demoware - this prototype example doesn't cover all edge cases!
     public static class CloudFrontParserNew
     {
         public static async Task<int> ParseAsync(string filePath, CloudFrontRecordStruct[] items)
