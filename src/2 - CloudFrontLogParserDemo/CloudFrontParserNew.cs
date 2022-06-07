@@ -74,25 +74,25 @@ namespace CloudfrontLogParserDemo
             {
                 if (line[0] == Hash) return null;
 
-                var tabCount = 1;
+                var tabCount = 0;
 
                 var record = new CloudFrontRecordStruct();
 
-                while (tabCount <= 11) // only need to parse first 11 tabs
+                while (tabCount <= 10) // only need to parse first 11 tabs
                 {
                     var tabAt = line.IndexOf(Tab);
 
-                    if (tabCount == 1)
+                    if (tabCount == 0)
                     {
                         var value = Encoding.UTF8.GetString(line.Slice(0, tabAt));
                         record.Date = value;
                     }
-                    else if (tabCount == 2)
+                    else if (tabCount == 1)
                     {
                         var value = Encoding.UTF8.GetString(line.Slice(0, tabAt));
                         record.Time = value;
                     }
-                    else if (tabCount == 11)
+                    else if (tabCount == 10)
                     {
                         var value = Encoding.UTF8.GetString(line.Slice(0, tabAt));
                         record.UserAgent = value;

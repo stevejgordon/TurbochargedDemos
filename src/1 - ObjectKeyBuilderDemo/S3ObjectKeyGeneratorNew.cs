@@ -57,47 +57,6 @@ namespace ObjectKeyBuilderDemo
             return key;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int CalculateLength(EventContext eventContext)
-        {
-            var length = 0;
-
-            length += string.IsNullOrEmpty(eventContext.Product)
-                ? UnknownPart.Length + 1
-                : CalculatePartLength(eventContext.Product);
-            length += string.IsNullOrEmpty(eventContext.SiteKey)
-                ? UnknownPart.Length + 1
-                : CalculatePartLength(eventContext.SiteKey);
-            length += string.IsNullOrEmpty(eventContext.EventName)
-                ? UnknownPart.Length + 1
-                : CalculatePartLength(eventContext.EventName);
-
-            if (eventContext.EventDateUtc != default)
-                length += DateFormat.Length;
-
-            length += eventContext.MessageId.Length;
-            length += JsonSuffix.Length;
-
-            return length;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int CalculatePartLength(ReadOnlySpan<char> input)
-        {
-            var isValid = true;
-
-            foreach (var c in input)
-            {
-                if (!char.IsLetterOrDigit(c) && c != ' ')
-                {
-                    isValid = false;
-                    break;
-                }
-            }
-
-            return isValid ? input.Length + 1 : InvalidPart.Length + 1;
-        }
-
         private static void BuildPart(string input, Span<char> output, ref int currentPosition)
         {
             var productLength = input?.Length ?? 0;
@@ -153,6 +112,48 @@ namespace ObjectKeyBuilderDemo
                 remaining = remaining.Slice(indexOfSpace + 1); // slice past the replaced char
                 indexOfSpace = remaining.IndexOf(' '); // do we have spaces
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int CalculateLength(EventContext eventContext)
+        {
+            var length = 0;
+
+            length += string.IsNullOrEmpty(eventContext.Product)
+                ? UnknownPart.Length + 1
+                : CalculatePartLength(eventContext.Product);
+            length += string.IsNullOrEmpty(eventContext.SiteKey)
+                ? UnknownPart.Length + 1
+                : CalculatePartLength(eventContext.SiteKey);
+            length += string.IsNullOrEmpty(eventContext.EventName)
+                ? UnknownPart.Length + 1
+                : CalculatePartLength(eventContext.EventName);
+
+            if (eventContext.EventDateUtc != default)
+                length += DateFormat.Length;
+
+            length += eventContext.MessageId.Length;
+            length += JsonSuffix.Length;
+
+            return length;
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int CalculatePartLength(ReadOnlySpan<char> input)
+        {
+            var isValid = true;
+
+            foreach (var c in input)
+            {
+                if (!char.IsLetterOrDigit(c) && c != ' ')
+                {
+                    isValid = false;
+                    break;
+                }
+            }
+
+            return isValid ? input.Length + 1 : InvalidPart.Length + 1;
         }
     }
 }

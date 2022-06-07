@@ -31,7 +31,7 @@ namespace CloudfrontLogParserDemo
                         var results = parser.Parse(data);
                         return results;
                     }
-                }                
+                }
             }
             
             return Enumerable.Empty<CloudFrontRecord>();

@@ -22,7 +22,7 @@ namespace ObjectKeyBuilderDemo
 
             if (eventContext.EventDateUtc != default)
             {
-                parts[3] = eventContext.EventDateUtc.ToString("yyyy/MM/dd/HH");                
+                parts[3] = eventContext.EventDateUtc.ToString("yyyy/MM/dd/HH");
                 parts[4] = eventContext.MessageId + ".json";
             }
             else
