@@ -10,15 +10,15 @@ namespace ObjectKeyBuilderDemo
         private const int MaxStackAllocationSize = 256;
         private const char JoinChar = '/';
 
-        // ugly but compiler can optmise away a memcopy
-        private static ReadOnlySpan<char> InvalidPart =>
-            new[] { 'i', 'n', 'v', 'a', 'l', 'i', 'd' };
+        // data is stored in metadata within the binary, so no allocations
+        private static ReadOnlySpan<char> InvalidPart => 
+            [ 'i', 'n', 'v', 'a', 'l', 'i', 'd' ];
         private static ReadOnlySpan<char> UnknownPart =>
-            new[] { 'u', 'n', 'k', 'n', 'o', 'w', 'n' };
+            [ 'u', 'n', 'k', 'n', 'o', 'w', 'n' ];
         private static ReadOnlySpan<char> DateFormat =>
-            new[] { 'y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/' };
+            [ 'y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/' ];
         private static ReadOnlySpan<char> JsonSuffix =>
-            new[] { '.', 'j', 's', 'o', 'n' };
+            [ '.', 'j', 's', 'o', 'n' ];
 
         public static string GenerateSafeObjectKey(EventContext eventContext)
         {
@@ -39,18 +39,18 @@ namespace ObjectKeyBuilderDemo
 
             if (eventContext.EventDateUtc != default)
             {
-                eventContext.EventDateUtc.TryFormat(objectKeySpan.Slice(currentPosition),
+                eventContext.EventDateUtc.TryFormat(objectKeySpan[currentPosition..],
                     out var charsWritten, DateFormat, CultureInfo.InvariantCulture);
 
                 currentPosition += charsWritten;
             }
 
             MemoryExtensions.ToLowerInvariant(eventContext.MessageId,
-                objectKeySpan.Slice(currentPosition)); 
+                objectKeySpan[currentPosition..]); 
 
             currentPosition += eventContext.MessageId.Length;
 
-            JsonSuffix.CopyTo(objectKeySpan.Slice(currentPosition)); // copy suffix
+            JsonSuffix.CopyTo(objectKeySpan[currentPosition..]); // copy suffix
 
             var key = objectKeySpan.ToString(); // allocate the final string
 
@@ -59,12 +59,12 @@ namespace ObjectKeyBuilderDemo
 
         private static void BuildPart(string input, Span<char> output, ref int currentPosition)
         {
-            var productLength = input?.Length ?? 0;
+            var length = input?.Length ?? 0;
 
             // check if empty string, if so, unknown
-            if (productLength == 0 || MemoryExtensions.IsWhiteSpace(input))
+            if (length == 0 || MemoryExtensions.IsWhiteSpace(input))
             {
-                UnknownPart.CopyTo(output.Slice(currentPosition));
+                UnknownPart.CopyTo(output[currentPosition..]);
                 currentPosition += UnknownPart.Length;
             }
             else
@@ -82,14 +82,14 @@ namespace ObjectKeyBuilderDemo
 
                 if (!isValid) // not valid
                 {
-                    InvalidPart.CopyTo(output.Slice(currentPosition));
+                    InvalidPart.CopyTo(output[currentPosition..]);
                     currentPosition += InvalidPart.Length;
                 }
                 else
                 {
                     // if valid, lowercase
-                    MemoryExtensions.ToLowerInvariant(input, output.Slice(currentPosition));
-                    currentPosition += productLength;
+                    MemoryExtensions.ToLowerInvariant(input, output[currentPosition..]);
+                    currentPosition += length;
                 }
             }
 
@@ -99,7 +99,7 @@ namespace ObjectKeyBuilderDemo
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void RemoveSpaces(Span<char> objectKey, ref int currentPosition)
         {
-            var remaining = objectKey.Slice(0, currentPosition);
+            var remaining = objectKey[..currentPosition];
 
             var indexOfSpace = remaining.IndexOf(' '); // do we have spaces
 
@@ -109,7 +109,7 @@ namespace ObjectKeyBuilderDemo
             while (indexOfSpace != -1) // while there are space
             {
                 remaining[indexOfSpace] = '_'; // replace at the index of the space
-                remaining = remaining.Slice(indexOfSpace + 1); // slice past the replaced char
+                remaining = remaining[(indexOfSpace + 1)..]; // slice past the replaced char
                 indexOfSpace = remaining.IndexOf(' '); // do we have spaces
             }
         }
@@ -137,7 +137,6 @@ namespace ObjectKeyBuilderDemo
 
             return length;
         }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int CalculatePartLength(ReadOnlySpan<char> input)

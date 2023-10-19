@@ -11,6 +11,8 @@ namespace CloudfrontLogParserDemo
     // demoware - this prototype example doesn't cover all edge cases!
     public static class CloudFrontParserNew
     {
+        private static ReadOnlySpan<byte> NewLine => "\r\n"u8;
+
         public static async Task<int> ParseAsync(string filePath, CloudFrontRecordStruct[] items)
         {
             var position = 0;
@@ -44,15 +46,14 @@ namespace CloudfrontLogParserDemo
             return position;
         }
 
-        private static SequencePosition ParseLines(CloudFrontRecordStruct[] itemsArray, ref ReadOnlySequence<byte> buffer, ref int position)
+        private static SequencePosition ParseLines(CloudFrontRecordStruct[] itemsArray, 
+            ref ReadOnlySequence<byte> buffer, ref int position)
         {
-            var newLine = Encoding.UTF8.GetBytes(Environment.NewLine).AsSpan();
-
             var reader = new SequenceReader<byte>(buffer);
 
             while (!reader.End)
             {
-                if (!reader.TryReadToAny(out ReadOnlySpan<byte> line, newLine, true))
+                if (!reader.TryReadToAny(out ReadOnlySpan<byte> line, NewLine, true))
                 {
                     break; // we don't have a delimiter (newline) in the current data
                 }

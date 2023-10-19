@@ -12,12 +12,11 @@ namespace BulkResponseParsingDemo
     {
         public static (bool Success, IReadOnlyCollection<string> Errors) ParseResponse(Stream stream, CancellationToken cancellationToken = default)
         {
-            // C# 8 FTW!! :-)
-            using var streamReader = new StreamReader(stream);
+            using var streamReader = new StreamReader(stream, leaveOpen: true); // open for benchmarking
             using var reader = new JsonTextReader(streamReader);
+            reader.CloseInput = false; // needed for benchmarking
 
-            JsonSerializer serializer = new JsonSerializer();
-
+            var serializer = new JsonSerializer();
             var response = serializer.Deserialize<BulkResponse>(reader);
 
             if (!response.Errors)

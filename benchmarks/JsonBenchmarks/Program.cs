@@ -3,21 +3,34 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Columns;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
+using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 using BulkResponseParsingDemo;
+using Dia2Lib;
 
 namespace BulkResponseParserBenchmarks
 {
     public class Program
     {
-        public static void Main(string[] args) => _ = BenchmarkRunner.Run<BulkResponseParserBenchmarks>();   
-        
+        public static void Main(string[] args)
+        {
+            var config = ManualConfig
+                .Create(DefaultConfig.Instance)
+                .AddDiagnoser(MemoryDiagnoser.Default)
+                .WithSummaryStyle(new SummaryStyle(null, false, SizeUnit.KB, null,
+                    ratioStyle: RatioStyle.Percentage));
+
+            BenchmarkRunner.Run<BulkResponseParserBenchmarks>(config);
+        }
+
         //public static async Task Main()
         //{
-        //    using (FileStream fs = File.OpenRead(AppDomain.CurrentDomain.BaseDirectory + "/SuccessResponseSample.txt"))
-        //    {
-        //        var result = await BulkResponseParserNew.FromStreamAsync(fs);
-        //    }
+        //    var thing = new BulkResponseParserBenchmarks();
+        //    thing.Setup();
+        //    await thing.ParseResponseNew();
         //}
     }
 
@@ -41,26 +54,20 @@ namespace BulkResponseParserBenchmarks
             }
         }
 
-        public IEnumerable<Stream> Streams()
-        {
-            yield return _errorStream;
-            yield return _successStream;
-        }
-
         [Benchmark(Baseline = true)]
-        [ArgumentsSource(nameof(Streams))]
-        public void ParseResponseOriginal(Stream stream)
+        public void ParseResponseOriginal()
         {
-            stream.Seek(0, SeekOrigin.Begin);
-            _ = BulkResponseParser.ParseResponse(stream);
+            var stream = _errorStream;
+            stream.Position = 0;
+            var (success, errors) = BulkResponseParser.ParseResponse(stream);
         }
 
         [Benchmark]
-        [ArgumentsSource(nameof(Streams))]
-        public async Task ParseResponseNew(Stream stream)
+        public async Task ParseResponseNew()
         {
-            stream.Seek(0, SeekOrigin.Begin);
-            _ = await BulkResponseParserNew.FromStreamAsync(stream);
+            var stream = _errorStream;
+            stream.Position = 0;
+            var (success, errors) = await BulkResponseParserNew.ParseResponseAsync(stream);
         }
     }
 }

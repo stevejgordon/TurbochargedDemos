@@ -1,15 +1,63 @@
 ﻿using System;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Columns;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Engines;
+using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 
 namespace MiscDemos
 {
     class Program
     {
-        public static void Main(string[] args) =>
-            _ = BenchmarkRunner.Run<ArrayBenchmarks>();
+        public static void Main(string[] args)
+        {
+            var config = ManualConfig
+                .Create(DefaultConfig.Instance)
+                .AddDiagnoser(MemoryDiagnoser.Default)
+                .WithSummaryStyle(new SummaryStyle(null, false, null, null, 
+                    ratioStyle: RatioStyle.Percentage));
+
+            _ = BenchmarkRunner.Run<ArrayBenchmarks>(config);
+        }
+    }
+
+    [MemoryDiagnoser]
+    public class Testing
+    {
+        private static readonly char[] _jsonSuffix = ['.', 'j', 's', 'o', 'n'];
+        private static ReadOnlySpan<char> JsonSuffix => _jsonSuffix;
+        private static ReadOnlySpan<char> JsonSuffix2 => ['.', 'j', 's', 'o', 'n'];
+
+        [Benchmark]
+        public ReadOnlySpan<char> Original() => JsonSuffix;
+
+        [Benchmark]
+        public ReadOnlySpan<char> New() => JsonSuffix2;
+    }
+
+    [MemoryDiagnoser]
+    public class NameParserBenchmarks
+    {
+        private const string FullName = "Steve J Gordon";
+        private static readonly NameParser Parser = new NameParser();
+
+        [Benchmark]
+        public void GetLastName()
+        {
+            Parser.GetLastName(FullName);
+        }
+    }
+
+    internal sealed class NameParser
+    {
+        internal string GetLastName(string fullName)
+        {
+            var parts = fullName.Split(' ');
+            return parts.Last();
+        }
     }
 
     [MemoryDiagnoser]
@@ -17,9 +65,7 @@ namespace MiscDemos
     {
         private int[] _myArray;
 
-        private static readonly Consumer Consumer = new Consumer();
-
-        [Params(10, 1000, 10000)]
+        [Params(100, 1000, 10000)]
         public int Size { get; set; }
 
         [GlobalSetup]
@@ -32,7 +78,7 @@ namespace MiscDemos
         }
 
         [Benchmark(Baseline = true)]
-        public void Original() => _myArray.Skip(Size / 2).Take(Size / 4).Consume(Consumer);
+        public int[] Original() => _myArray.Skip(Size / 2).Take(Size / 4).ToArray();
 
         [Benchmark]
         public int[] ArrayCopy()
@@ -40,15 +86,6 @@ namespace MiscDemos
             var newArray = new int[Size / 4];
             Array.Copy(_myArray, Size / 2, newArray, 0, Size / 4);
             return newArray;
-        }
-
-        [Benchmark]
-        public void NewArray()
-        {
-            var newArray = new int[Size / 4];
-
-            for (var i = 0; i < Size / 4; i++)
-                newArray[i] = _myArray[(Size / 2) + i];
         }
 
         [Benchmark]

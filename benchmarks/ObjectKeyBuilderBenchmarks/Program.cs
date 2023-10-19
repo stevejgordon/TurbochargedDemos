@@ -1,5 +1,9 @@
 ﻿using System;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Columns;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
+using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 using ObjectKeyBuilderDemo;
 
@@ -7,7 +11,16 @@ namespace ObjectKeyBuilderBenchmarks
 {
     class Program
     {
-        static void Main(string[] args) => _ = BenchmarkRunner.Run<SpanBenchmarks>();
+        static void Main(string[] args)
+        {
+            var config = ManualConfig
+                .Create(DefaultConfig.Instance)
+                .AddDiagnoser(MemoryDiagnoser.Default)
+                .WithSummaryStyle(new SummaryStyle(null, false, null, null,
+                    ratioStyle: RatioStyle.Percentage));
+
+            _ = BenchmarkRunner.Run<SpanBenchmarks>(config);
+        }
     }
 
     [MemoryDiagnoser]
@@ -28,16 +41,13 @@ namespace ObjectKeyBuilderBenchmarks
             };
         }
 
-        [Params(5, 20, 100)]
-        public int Count { get; set; }
-
         [Benchmark(Baseline = true)]
         public void Original() => _ = S3ObjectKeyGenerator.GenerateSafeObjectKey(_context);
 
         [Benchmark]
         public void SpanBased() => _ = S3ObjectKeyGeneratorNew.GenerateSafeObjectKey(_context);
 
-        [Benchmark]
-        public void StringCreate() => _ = S3ObjectKeyGeneratorNewV2.GenerateSafeObjectKey(_context);
+        //[Benchmark]
+        //public void StringCreate() => _ = S3ObjectKeyGeneratorNewV2.GenerateSafeObjectKey(_context);
     }
 }

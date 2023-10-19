@@ -13,14 +13,14 @@ namespace BulkResponseParsingDemo
     public static class BulkResponseParserNew
     {
         private static ReadOnlySpan<byte> ErrorsPropertyNameBytes =>
-            new[] { (byte)'e', (byte)'r', (byte)'r', (byte)'o', (byte)'r', (byte)'s' };
+            "error"u8;
         private static ReadOnlySpan<byte> IdPropertyNameBytes =>
-            new[] { (byte)'_', (byte)'i', (byte)'d' };
+            "_id"u8;
         private static ReadOnlySpan<byte> StatusPropertyNameBytes =>
-            new[] { (byte)'s', (byte)'t', (byte)'a', (byte)'t', (byte)'u', (byte)'s' };
+            "status"u8;
 
-        public static async Task<(bool success, IEnumerable<string> failedIds)> FromStreamAsync(Stream stream, 
-            CancellationToken ct = default)
+        public static async ValueTask<(bool success, IEnumerable<string> failedIds)> 
+            ParseResponseAsync(Stream stream, CancellationToken ct = default)
         {
             var buffer = ArrayPool<byte>.Shared.Rent(1024); // hardcoded as I know the length in this sample
 
@@ -134,7 +134,7 @@ namespace BulkResponseParsingDemo
                         if (foundErrorsProperty && !insideItemsArray && startObjectCount == 0)
                         {
                             hasErrors = true;
-                            errors = new List<string>();
+                            errors = [];
                         }
                         break;
 

@@ -14,8 +14,9 @@ namespace ObjectKeyBuilderDemo
             new[] { 'u', 'n', 'k', 'n', 'o', 'w', 'n' };
         private static ReadOnlySpan<char> DateFormat => 
             new[] { 'y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/' };
-        private static ReadOnlySpan<char> JsonSuffix => 
-            new[] { '.', 'j', 's', 'o', 'n' };
+        
+        private static readonly char[] _jsonSuffix = [ '.', 'j', 's', 'o', 'n' ];
+        private static ReadOnlySpan<char> JsonSuffix => _jsonSuffix;
 
         public static string GenerateSafeObjectKey(EventContext eventContext)
         {
