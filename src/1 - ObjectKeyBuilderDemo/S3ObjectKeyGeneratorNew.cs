@@ -1,24 +1,28 @@
 ﻿using System;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace ObjectKeyBuilderDemo
 {
     // demoware - this prototype example doesn't cover all edge cases!
-    public class S3ObjectKeyGeneratorNew
+    public partial class S3ObjectKeyGeneratorNew
     {
+        [GeneratedRegex("^[a-z0-9_]+$", RegexOptions.IgnoreCase)]
+        private static partial Regex ValidationRegex();
+
         private const int MaxStackAllocationSize = 256;
         private const char JoinChar = '/';
 
         // data is stored in metadata within the binary, so no allocations
-        private static ReadOnlySpan<char> InvalidPart => 
-            [ 'i', 'n', 'v', 'a', 'l', 'i', 'd' ];
+        private static ReadOnlySpan<char> InvalidPart =>
+            ['i', 'n', 'v', 'a', 'l', 'i', 'd'];
         private static ReadOnlySpan<char> UnknownPart =>
-            [ 'u', 'n', 'k', 'n', 'o', 'w', 'n' ];
+            ['u', 'n', 'k', 'n', 'o', 'w', 'n'];
         private static ReadOnlySpan<char> DateFormat =>
-            [ 'y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/' ];
+            ['y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/'];
         private static ReadOnlySpan<char> JsonSuffix =>
-            [ '.', 'j', 's', 'o', 'n' ];
+            ['.', 'j', 's', 'o', 'n'];
 
         public static string GenerateSafeObjectKey(EventContext eventContext)
         {
@@ -46,7 +50,7 @@ namespace ObjectKeyBuilderDemo
             }
 
             MemoryExtensions.ToLowerInvariant(eventContext.MessageId,
-                objectKeySpan[currentPosition..]); 
+                objectKeySpan[currentPosition..]);
 
             currentPosition += eventContext.MessageId.Length;
 
@@ -70,26 +74,16 @@ namespace ObjectKeyBuilderDemo
             else
             {
                 // check valid
-                var isValid = true;
-                foreach (var c in input)
-                {
-                    if (!char.IsLetterOrDigit(c) && c != ' ')
-                    {
-                        isValid = false;
-                        break;
-                    }
-                }
-
-                if (!isValid) // not valid
-                {
-                    InvalidPart.CopyTo(output[currentPosition..]);
-                    currentPosition += InvalidPart.Length;
-                }
-                else
+                if (ValidationRegex().IsMatch(input))
                 {
                     // if valid, lowercase
                     MemoryExtensions.ToLowerInvariant(input, output[currentPosition..]);
                     currentPosition += length;
+                }
+                else
+                {
+                    InvalidPart.CopyTo(output[currentPosition..]);
+                    currentPosition += InvalidPart.Length;
                 }
             }
 
@@ -139,20 +133,7 @@ namespace ObjectKeyBuilderDemo
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int CalculatePartLength(ReadOnlySpan<char> input)
-        {
-            var isValid = true;
-
-            foreach (var c in input)
-            {
-                if (!char.IsLetterOrDigit(c) && c != ' ')
-                {
-                    isValid = false;
-                    break;
-                }
-            }
-
-            return isValid ? input.Length + 1 : InvalidPart.Length + 1;
-        }
+        private static int CalculatePartLength(ReadOnlySpan<char> input) =>
+            ValidationRegex().IsMatch(input) ? input.Length + 1 : InvalidPart.Length + 1;
     }
 }
