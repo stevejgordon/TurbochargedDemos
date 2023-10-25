@@ -8,7 +8,7 @@ namespace ObjectKeyBuilderDemo
     // demoware - this prototype example doesn't cover all edge cases!
     public partial class S3ObjectKeyGeneratorNew
     {
-        [GeneratedRegex("^[a-z0-9_]+$", RegexOptions.IgnoreCase)]
+        [GeneratedRegex("^[a-z0-9_]+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
         private static partial Regex ValidationRegex();
 
         private const int MaxStackAllocationSize = 256;
