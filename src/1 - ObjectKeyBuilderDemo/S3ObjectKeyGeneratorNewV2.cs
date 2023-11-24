@@ -1,124 +1,79 @@
-﻿using System;
-using System.Buffers;
+﻿using System.Buffers;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace ObjectKeyBuilderDemo
 {
-    public static class S3ObjectKeyGeneratorNewV2
+    public static partial class S3ObjectKeyGeneratorNewV2
     {
+        [GeneratedRegex("^[a-z0-9 ]+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+        private static partial Regex ValidationRegex();
+
         private const char JoinChar = '/';
+
+        // data is stored in metadata within the binary, so no allocations
         private static ReadOnlySpan<char> InvalidPart => 
-            new [] { 'i', 'n', 'v', 'a', 'l', 'i', 'd' };
+            ['i', 'n', 'v', 'a', 'l', 'i', 'd'];
         private static ReadOnlySpan<char> UnknownPart => 
-            new[] { 'u', 'n', 'k', 'n', 'o', 'w', 'n' };
+            ['u', 'n', 'k', 'n', 'o', 'w', 'n'];
         private static ReadOnlySpan<char> DateFormat => 
-            new[] { 'y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/' };
-        
-        private static readonly char[] _jsonSuffix = [ '.', 'j', 's', 'o', 'n' ];
-        private static ReadOnlySpan<char> JsonSuffix => _jsonSuffix;
+            ['y', 'y', 'y', 'y', '/', 'M', 'M', '/', 'd', 'd', '/', 'H', 'H', '/'];        
+        private static ReadOnlySpan<char> JsonSuffix => 
+            ['.', 'j', 's', 'o', 'n'];
 
         public static string GenerateSafeObjectKey(EventContext eventContext)
         {
-            var productMetaData = LoadMetaData(eventContext.Product);
-            var siteKeyMetaData = LoadMetaData(eventContext.SiteKey);
-            var eventNameMetaData = LoadMetaData(eventContext.EventName);
-
-            var length = productMetaData.Length + siteKeyMetaData.Length + 
-                eventNameMetaData.Length;
-
-            CalculateLength(ref eventContext, ref length);
-
-            return string.Create(length, (eventContext, productMetaData, siteKeyMetaData, eventNameMetaData), KeyBuilderAction);
+            var length = CalculateLength(eventContext);
+            var result = string.Create(length, eventContext, KeyBuilderAction);
+            return result;
         }
 
-        private static readonly SpanAction<char, ValueTuple<EventContext, PartMetaData, PartMetaData, PartMetaData>> KeyBuilderAction = (span, ctx) =>
+        private static readonly SpanAction<char, EventContext> KeyBuilderAction = (span, eventContext) =>
         {
             var currentPosition = 0;
 
-            var (eventContext, productMetaData, siteKeyMetaData, eventNameMetaData) = ctx;
+            BuildPart(eventContext.Product, span, ref currentPosition);
+            BuildPart(eventContext.SiteKey, span, ref currentPosition);
+            BuildPart(eventContext.EventName, span, ref currentPosition);
 
-            BuildPart(eventContext.Product, ref span, ref currentPosition, ref productMetaData);
-            BuildPart(eventContext.SiteKey, ref span, ref currentPosition, ref siteKeyMetaData);
-            BuildPart(eventContext.EventName, ref span, ref currentPosition, ref eventNameMetaData);
+            span[..(currentPosition - 1)].Replace(' ', '_'); // Since .NET 8 - Optimised way to replace
 
             if (eventContext.EventDateUtc != default)
             {
-                eventContext.EventDateUtc.TryFormat(span.Slice(currentPosition), out var bytesWritten, DateFormat, CultureInfo.InvariantCulture);
+                eventContext.EventDateUtc.TryFormat(span[currentPosition..], out var bytesWritten, 
+                    DateFormat, CultureInfo.InvariantCulture);
                 currentPosition += bytesWritten;
             }
 
-            MemoryExtensions.ToLowerInvariant(eventContext.MessageId, span.Slice(currentPosition));
+            MemoryExtensions.ToLowerInvariant(eventContext.MessageId, span[currentPosition..]);
 
-            JsonSuffix.CopyTo(span.Slice(span.Length - 5));
+            JsonSuffix.CopyTo(span[^5..]);
         };
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static PartMetaData LoadMetaData(ReadOnlySpan<char> input)
+        private static void BuildPart(string input, Span<char> output, ref int currentPosition)
         {
-            var isEmpty = false;
-            var isValid = true;
-            var hasSpaces = false;
+            var length = input?.Length ?? 0;
 
-            if (input.Length > 0 && !input.IsWhiteSpace())
+            // check if empty string, if so, unknown
+            if (length == 0 || MemoryExtensions.IsWhiteSpace(input))
             {
-                foreach (var c in input)
-                {
-                    if (!char.IsLetterOrDigit(c) && c != ' ')
-                    {
-                        isValid = false;
-                        break;
-                    }
-
-                    if (c == ' ')
-                    {
-                        hasSpaces = true;
-                    }
-                }
-            }
-            else
-            {
-                isEmpty = true;
-            }
-
-            return new PartMetaData(isEmpty, isValid, hasSpaces, isEmpty || !isValid 
-                ? InvalidPart.Length
-                : input.Length);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateLength(ref EventContext eventContext, ref int length)
-        {
-            length += 3; // the separators for the first keys which we always need
-
-            if (eventContext.EventDateUtc != default)
-                length += DateFormat.Length;
-
-            length += eventContext.MessageId.Length;
-            length += JsonSuffix.Length;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void BuildPart(ReadOnlySpan<char> input, ref Span<char> output, ref int currentPosition, ref PartMetaData metaData)
-        {
-            if (metaData.IsEmpty)
-            {
-                UnknownPart.CopyTo(output.Slice(currentPosition));
+                UnknownPart.CopyTo(output[currentPosition..]);
                 currentPosition += UnknownPart.Length;
             }
-            else if (!metaData.IsValid)
-            {
-                InvalidPart.CopyTo(output.Slice(currentPosition));
-                currentPosition += InvalidPart.Length;
-            }
             else
             {
-                input.ToLowerInvariant(output.Slice(currentPosition));
-                currentPosition += input.Length;
-
-                if (metaData.HasSpaces)
+                // check valid
+                if (ValidationRegex().IsMatch(input))
                 {
-                    RemoveSpaces(output.Slice(currentPosition - input.Length, input.Length));
+                    // if valid, lowercase
+                    MemoryExtensions.ToLowerInvariant(input, output[currentPosition..]);
+                    currentPosition += length;
+                }
+                else
+                {
+                    InvalidPart.CopyTo(output[currentPosition..]);
+                    currentPosition += InvalidPart.Length;
                 }
             }
 
@@ -126,35 +81,30 @@ namespace ObjectKeyBuilderDemo
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void RemoveSpaces(Span<char> objectKey)
+        private static int CalculateLength(EventContext eventContext)
         {
-            var indexOfSpace = objectKey.IndexOf(' ');
+            var length = 0;
 
-            if (indexOfSpace < 0)
-                return;
+            length += string.IsNullOrEmpty(eventContext.Product)
+                ? UnknownPart.Length + 1
+                : CalculatePartLength(eventContext.Product);
+            length += string.IsNullOrEmpty(eventContext.SiteKey)
+                ? UnknownPart.Length + 1
+                : CalculatePartLength(eventContext.SiteKey);
+            length += string.IsNullOrEmpty(eventContext.EventName)
+                ? UnknownPart.Length + 1
+                : CalculatePartLength(eventContext.EventName);
 
-            while (indexOfSpace != -1)
-            {
-                objectKey[indexOfSpace] = '_';
-                objectKey = objectKey.Slice(indexOfSpace + 1);
-                indexOfSpace = objectKey.IndexOf(' ');
-            }
-        }
+            if (eventContext.EventDateUtc != default)
+                length += DateFormat.Length;
 
-        private readonly struct PartMetaData
-        {
-            public PartMetaData(bool isEmpty, bool isValid, bool hasSpaces, int length)
-            {
-                IsEmpty = isEmpty;
-                IsValid = isValid;
-                HasSpaces = hasSpaces;
-                Length = length;
-            }
+            length += eventContext.MessageId.Length;
+            length += JsonSuffix.Length;
 
-            public bool IsEmpty { get; }
-            public int Length { get; }
-            public bool IsValid { get; }
-            public bool HasSpaces { get; }
+            return length;
+
+            static int CalculatePartLength(ReadOnlySpan<char> input) =>
+                ValidationRegex().IsMatch(input) ? input.Length + 1 : InvalidPart.Length + 1;
         }
     }
 }

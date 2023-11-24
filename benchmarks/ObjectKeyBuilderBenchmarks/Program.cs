@@ -46,5 +46,8 @@ namespace ObjectKeyBuilderBenchmarks
 
         [Benchmark]
         public void SpanBased() => _ = S3ObjectKeyGeneratorNew.GenerateSafeObjectKey(_context);
+
+        [Benchmark]
+        public void StringCreateBased() => _ = S3ObjectKeyGeneratorNewV2.GenerateSafeObjectKey(_context);
     }
 }

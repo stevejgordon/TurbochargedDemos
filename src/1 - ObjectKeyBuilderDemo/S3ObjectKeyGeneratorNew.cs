@@ -7,7 +7,7 @@ namespace ObjectKeyBuilderDemo;
 // demoware - this prototype example doesn't cover all edge cases!
 public partial class S3ObjectKeyGeneratorNew
 {
-    [GeneratedRegex("^[a-z0-9_]+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex("^[a-z0-9 ]+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ValidationRegex();
 
     private const int MaxStackAllocationSize = 256;
@@ -60,6 +60,7 @@ public partial class S3ObjectKeyGeneratorNew
         return key;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void BuildPart(string input, Span<char> output, ref int currentPosition)
     {
         var length = input?.Length ?? 0;
@@ -111,9 +112,8 @@ public partial class S3ObjectKeyGeneratorNew
         length += JsonSuffix.Length;
 
         return length;
-    }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CalculatePartLength(ReadOnlySpan<char> input) =>
-        ValidationRegex().IsMatch(input) ? input.Length + 1 : InvalidPart.Length + 1;
+        static int CalculatePartLength(ReadOnlySpan<char> input) =>
+            ValidationRegex().IsMatch(input) ? input.Length + 1 : InvalidPart.Length + 1;
+    }
 }
